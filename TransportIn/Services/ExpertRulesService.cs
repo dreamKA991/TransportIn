@@ -1,4 +1,7 @@
-﻿namespace TransportIn.Services
+using Microsoft.EntityFrameworkCore;
+using TransportIn.Data;
+
+namespace TransportIn.Services
 {
     public class ExpertRule
     {
@@ -11,71 +14,59 @@
 
     public class ExpertRulesService
     {
-        private List<ExpertRule> rules = new()
-        {
-            new ExpertRule
-            {
-                Id = 1,
-                ThreatType = "Повітряна тривога",
-                Condition = "Автомобіль в дорозі",
-                ActionRecommendation = "Негайна зупинка, пошук безпечного місця або найближчої стоянки.",
-                Priority = "Критичний"
-            },
-            new ExpertRule
-            {
-                Id = 2,
-                ThreatType = "Аномальна спека (>+35°C)",
-                Condition = "Вага понад 24 тонни в денний час (10:00 - 22:00)",
-                ActionRecommendation = "Діє обмеження Укравтодору. Перенесення руху на нічний час, відстій на TIR-парковках.",
-                Priority = "Високий"
-            },
-            new ExpertRule
-            {
-                Id = 3,
-                ThreatType = "Ожеледиця",
-                Condition = "Зниження коефіцієнта зчеплення",
-                ActionRecommendation = "Зменшення швидкості руху на 30–50%, підвищена дистанція.",
-                Priority = "Середній"
-            },
-            new ExpertRule
-            {
-                Id = 4,
-                ThreatType = "Закриття мостів (Правий / Лівий берег)",
-                Condition = "Критична інфраструктурна подія",
-                ActionRecommendation = "Блокування автоматичної побудови маршруту через річку. Очікування відновлення руху.",
-                Priority = "Критичний"
-            }
-        };
+        private readonly AppDbContext _db;
+
+        public ExpertRulesService(AppDbContext db) => _db = db;
 
         public event Action? OnChange;
 
-        public List<ExpertRule> GetAllRules() => rules;
+        public List<ExpertRule> GetAllRules() => _db.ExpertRules
+            .AsNoTracking()
+            .OrderBy(rule => rule.Id)
+            .Select(rule => new ExpertRule
+            {
+                Id = rule.Id,
+                ThreatType = rule.ThreatType,
+                Condition = rule.Condition,
+                ActionRecommendation = rule.ActionRecommendation,
+                Priority = rule.Priority
+            })
+            .ToList();
 
         public void AddRule(ExpertRule rule)
         {
-            rule.Id = rules.Count > 0 ? rules.Max(r => r.Id) + 1 : 1;
-            rules.Add(rule);
+            var entity = new TransportIn.Data.Entities.ExpertRule
+            {
+                ThreatType = rule.ThreatType,
+                Condition = rule.Condition,
+                ActionRecommendation = rule.ActionRecommendation,
+                Priority = rule.Priority
+            };
+
+            _db.ExpertRules.Add(entity);
+            _db.SaveChanges();
+            rule.Id = entity.Id;
             NotifyStateChanged();
         }
 
         public void DeleteRule(int id)
         {
-            var rule = rules.FirstOrDefault(r => r.Id == id);
-            if (rule != null)
-            {
-                rules.Remove(rule);
-                NotifyStateChanged();
-            }
+            var rule = _db.ExpertRules.FirstOrDefault(item => item.Id == id);
+            if (rule == null) return;
+
+            _db.ExpertRules.Remove(rule);
+            _db.SaveChanges();
+            NotifyStateChanged();
         }
 
         public string EvaluateThreat(string threatType, bool isInTransit)
         {
-            var rule = rules.FirstOrDefault(r => r.ThreatType.Contains(threatType, StringComparison.OrdinalIgnoreCase));
-            if (rule != null)
-            {
-                return $"[Рекомендація експертної системи]: {rule.ActionRecommendation} (Пріоритет: {rule.Priority})";
-            }
-            return "Дійте за стандартним протоколом безпеки.";
+            var rule = GetAllRules().FirstOrDefault(item =>
+                item.ThreatType.Contains(threatType, StringComparison.OrdinalIgnoreCase));
+
+            return rule == null
+                ? "Дійте за стандартним протоколом безпеки."
+                : $"[Рекомендація експертної системи]: {rule.ActionRecommendation} (Пріоритет: {rule.Priority})";
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();

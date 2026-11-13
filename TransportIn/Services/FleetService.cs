@@ -1,36 +1,86 @@
-﻿using TransportIn.Models;
+﻿
+using TransportIn.Data;
+using TransportIn.Models;
+using System.Linq;
 
 namespace TransportIn.Services
 {
     public class FleetService
     {
-        private List<Vehicle> vehicles = new()
+        private readonly AppDbContext _context;
+
+        public FleetService(AppDbContext context)
         {
-            new Vehicle { Id = 1, BrandModel = "Mercedes-Benz Sprinter", LicensePlate = "AA 1234 ВР", VinCode = "1YVBR12E34567890X", BodyType = "Цільнометалічний фургон", CapacityTons = 2.5, VolumeM3 = 12, HasRefrigerator = false, AssignedDriver = "Водій: Іван", Lat = 50.4551, Lng = 30.5334 },
-            new Vehicle { Id = 2, BrandModel = "MAN TGX", LicensePlate = "AI 5678 СЕ", VinCode = "WMAXXXXXXXXXXXXXX", BodyType = "Рефрижератор", CapacityTons = 20.0, VolumeM3 = 86, HasRefrigerator = true, AssignedDriver = "Водій: Петро", Lat = 50.4401, Lng = 30.5134 }
-        };
+            _context = context;
+        }
 
         public event Action? OnChange;
 
-        public List<Vehicle> GetAllVehicles() => vehicles;
+        // Получить все автомобили из PostgreSQL
+        public List<Vehicle> GetAllVehicles()
+        {
+            return _context.Vehicles
+                .Select(v => new Vehicle
+                {
+                    Id = v.Id,
+                    BrandModel = v.BrandModel,
+                    LicensePlate = v.LicensePlate,
+                    VinCode = v.VinCode,
+                    BodyType = v.BodyType,
+                    CapacityTons = v.CapacityTons,
+                    VolumeM3 = v.VolumeM3,
+                    HasRefrigerator = v.HasRefrigerator,
+                    AssignedDriver = v.AssignedDriver,
+                    Status = v.Status,
+                    Lat = v.Lat,
+                    Lng = v.Lng
+                })
+                .ToList();
+        }
 
+        // Добавить автомобиль в PostgreSQL
         public void AddVehicle(Vehicle vehicle)
         {
-            vehicle.Id = vehicles.Count > 0 ? vehicles.Max(v => v.Id) + 1 : 1;
-            vehicles.Add(vehicle);
+            var dbVehicle = new TransportIn.Data.Entities.Vehicle
+            {
+                BrandModel = vehicle.BrandModel,
+                LicensePlate = vehicle.LicensePlate,
+                VinCode = vehicle.VinCode,
+                BodyType = vehicle.BodyType,
+                CapacityTons = vehicle.CapacityTons,
+                VolumeM3 = vehicle.VolumeM3,
+                HasRefrigerator = vehicle.HasRefrigerator,
+                AssignedDriver = vehicle.AssignedDriver,
+                Status = vehicle.Status,
+                Lat = vehicle.Lat,
+                Lng = vehicle.Lng
+            };
+
+            _context.Vehicles.Add(dbVehicle);
+            _context.SaveChanges();
+
+            vehicle.Id = dbVehicle.Id;
+
             NotifyStateChanged();
         }
 
+        // Удалить автомобиль из PostgreSQL
         public void DeleteVehicle(int id)
         {
-            var vehicle = vehicles.FirstOrDefault(v => v.Id == id);
+            var vehicle = _context.Vehicles.FirstOrDefault(v => v.Id == id);
+
             if (vehicle != null)
             {
-                vehicles.Remove(vehicle);
+                _context.Vehicles.Remove(vehicle);
+                _context.SaveChanges();
+
                 NotifyStateChanged();
             }
         }
 
-        private void NotifyStateChanged() => OnChange?.Invoke();
+        private void NotifyStateChanged()
+        {
+            OnChange?.Invoke();
+        }
     }
 }

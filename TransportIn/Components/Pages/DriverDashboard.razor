@@ -298,8 +298,7 @@
 
     private void UpdateOrderStatus(TransportIn.Models.Order order, string newStatus)
     {
-        order.Status = newStatus;
-        // Оновлюємо стан у сервісі
+        OrderService.UpdateStatus(order.Id, newStatus);
     }
 
     private void SendProblemReport()
