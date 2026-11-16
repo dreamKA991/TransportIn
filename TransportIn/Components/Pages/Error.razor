@@ -2,9 +2,6 @@
 @layout TransportIn.Components.Layout.AdminLayout
 @using System.Diagnostics
 
-@inject TransportIn.Services.AuthService AuthService
-@inject NavigationManager Navigation
-
 <PageTitle>Помилка | TransportIn</PageTitle>
 
 <div class="admin-layout">
@@ -15,24 +12,18 @@
             <small>Диспетчерський пульт</small>
         </div>
         <nav class="mt-3">
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Admin)
-            {
-                <a class="nav-link @(IsActive("/admin-dashboard") ? "active" : "")" href="/admin-dashboard"><i class="bi bi-grid-1x2-fill"></i> Панель адміна</a>
-            }
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Manager)
-            {
-                <a class="nav-link @(IsActive("/manager-dashboard") ? "active" : "")" href="/manager-dashboard"><i class="bi bi-people-fill"></i> Менеджер</a>
-            }
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Driver)
-            {
-                <a class="nav-link @(IsActive("/driver-dashboard") ? "active" : "")" href="/driver-dashboard"><i class="bi bi-person-badge-fill"></i> Водій</a>
-            }
-            <a class="nav-link @(IsActive("/map-monitor") ? "active" : "")" href="/map-monitor"><i class="bi bi-map"></i> Карта моніторингу</a>
-            @if (AuthService.CurrentUser?.Role != TransportIn.Models.UserRole.Driver)
-            {
-                <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history"><i class="bi bi-clock-history"></i> Історія</a>
-            }
-            <a class="nav-link @(IsActive("/counter") ? "active" : "")" href="/counter"><i class="bi bi-graph-up-arrow"></i> Аналітика</a>
+            <a class="nav-link" href="/admin-dashboard">
+                <i class="bi bi-grid-1x2-fill"></i> Панель адміна
+            </a>
+            <a class="nav-link" href="/manager-dashboard">
+                <i class="bi bi-people-fill"></i> Менеджер
+            </a>
+            <a class="nav-link" href="/driver-dashboard">
+                <i class="bi bi-person-badge-fill"></i> Водій
+            </a>
+            <a class="nav-link" href="/counter">
+                <i class="bi bi-graph-up-arrow"></i> Аналітика
+            </a>
         </nav>
     </aside>
 
@@ -56,7 +47,7 @@
                         Будь ласка, спробуйте оновити сторінку або поверніться на головну панель.
                     </p>
 
-                    <!-- Блок з Request ID -->
+                    <!-- Блок з Request ID (відображається, якщо є) -->
                     @if (ShowRequestId)
                     {
                         <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-color);">
@@ -92,9 +83,9 @@
                                 @onclick="ReloadPage">
                             <i class="bi bi-arrow-clockwise"></i> Оновити сторінку
                         </button>
-                        <button class="btn-modern btn-add" @onclick="GoHome" style="text-decoration: none; border: none; cursor: pointer;">
+                        <a href="/admin-dashboard" class="btn-modern btn-add" style="text-decoration: none;">
                             <i class="bi bi-house-door"></i> На головну панель
-                        </button>
+                        </a>
                     </div>
 
                 </div>
@@ -113,22 +104,10 @@
     protected override void OnInitialized() =>
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
 
-    private bool IsActive(string path) => Navigation.Uri.EndsWith(path, StringComparison.OrdinalIgnoreCase);
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private void ReloadPage()
     {
         Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
-    }
-
-    private void GoHome()
-    {
-        var target = AuthService.CurrentUser?.Role switch
-        {
-            TransportIn.Models.UserRole.Admin => "/admin-dashboard",
-            TransportIn.Models.UserRole.Manager => "/manager-dashboard",
-            TransportIn.Models.UserRole.Driver => "/driver-dashboard",
-            _ => "/"
-        };
-        Navigation.NavigateTo(target);
     }
 }

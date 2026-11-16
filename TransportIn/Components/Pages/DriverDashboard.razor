@@ -8,471 +8,312 @@
 @inject NavigationManager Navigation
 
 <div class="admin-layout">
+    <!-- ===== САЙДБАР ===== -->
     <aside class="admin-sidebar">
         <div class="sidebar-header">
             <h4><i class="bi bi-truck-front-fill"></i> TransportIn</h4>
             <small>Диспетчерський пульт</small>
         </div>
         <nav class="mt-3">
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Admin)
-            {
-                <a class="nav-link @(IsActive("/admin-dashboard") ? "active" : "")" href="/admin-dashboard"><i class="bi bi-grid-1x2-fill"></i> Панель адміна</a>
-            }
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Manager)
-            {
-                <a class="nav-link @(IsActive("/manager-dashboard") ? "active" : "")" href="/manager-dashboard"><i class="bi bi-people-fill"></i> Менеджер</a>
-            }
-            @if (AuthService.CurrentUser?.Role == TransportIn.Models.UserRole.Driver)
-            {
-                <a class="nav-link @(IsActive("/driver-dashboard") ? "active" : "")" href="/driver-dashboard"><i class="bi bi-person-badge-fill"></i> Водій</a>
-            }
-            <a class="nav-link @(IsActive("/map-monitor") ? "active" : "")" href="/map-monitor"><i class="bi bi-map"></i> Карта моніторингу</a>
-            @if (AuthService.CurrentUser?.Role != TransportIn.Models.UserRole.Driver)
-            {
-                <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history"><i class="bi bi-clock-history"></i> Історія</a>
-            }
-            <a class="nav-link @(IsActive("/counter") ? "active" : "")" href="/counter"><i class="bi bi-graph-up-arrow"></i> Аналітика</a>
+            <a class="nav-link" href="/admin-dashboard">
+                <i class="bi bi-grid-1x2-fill"></i> Панель адміна
+            </a>
+            <a class="nav-link" href="/manager-dashboard">
+                <i class="bi bi-people-fill"></i> Менеджер
+            </a>
+            <a class="nav-link active" href="/driver-dashboard">
+                <i class="bi bi-person-badge-fill"></i> Водій
+            </a>
+            <a class="nav-link" href="/counter">
+                <i class="bi bi-graph-up-arrow"></i> Аналітика
+            </a>
         </nav>
     </aside>
 
+    <!-- ===== ОСНОВНИЙ КОНТЕНТ ===== -->
     <main class="admin-main">
+        <!-- Верхня панель -->
         <div class="top-navbar">
             <div>
-                <h5 class="mb-0" style="font-weight:600;color:var(--text-primary);">Кабінет водія</h5>
-                <small style="color:var(--text-secondary);">@AuthService.CurrentUser?.FullName</small>
+                <h5 class="mb-0" style="font-weight: 600; color: var(--text-primary);">Кабінет водія</h5>
+                <small style="color: var(--text-secondary);">@AuthService.CurrentUser?.FullName</small>
             </div>
             <div class="user-info">
-                <button class="btn-logout" @onclick="Logout"><i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Вийти</span></button>
+                <button class="btn-logout" @onclick="Logout">
+                    <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Вийти</span>
+                </button>
             </div>
         </div>
 
         <div class="content-section">
-            <!-- ПОВІДОМЛЕННЯ ПРО ЗАГРОЗИ -->
-            @if (!string.IsNullOrEmpty(EmergencyService.CurrentEmergency) && EmergencyService.CurrentEmergency != "Спокійно")
-            {
-                <div class="threat-alert-driver @(GetThreatClass())">
-                    <div class="threat-title">
-                        <i class="bi @GetThreatIcon()"></i>
-                        Увага! @EmergencyService.CurrentEmergency
-                    </div>
-                    <div class="threat-body">@GetThreatAdvice()</div>
+            <!-- Сповіщення про загрози -->
+            <div class="emergency-panel" style="border-left-color: @GetEmergencyColor()">
+                <div class="emergency-header" style="background: @GetEmergencyHeaderBg()">
+                    <h5>
+                        <i class="bi @GetEmergencyIcon()" style="color: @GetEmergencyColor()"></i>
+                        Статус безпеки: @EmergencyService.CurrentEmergency
+                    </h5>
+                    <span class="emergency-status @GetEmergencyClass()">
+                        <i class="bi @GetEmergencyStatusIcon()"></i>
+                        @EmergencyService.CurrentEmergency
+                    </span>
                 </div>
-            }
-
-            @if (currentOrder == null)
-            {
-                <!-- Порожній стан: немає призначених замовлень -->
-                <div class="modern-card">
-                    <div class="card-body-custom">
-                        <div class="empty-state">
-                            <i class="bi bi-truck"></i>
-                            <h4>Немає активних замовлень</h4>
-                            <p>Наразі вам не призначено жодного замовлення. Після призначення менеджером воно з'явиться тут.</p>
-                        </div>
-                    </div>
+                <div class="emergency-body">
+                    <p class="mb-0" style="color: var(--text-secondary);">
+                        Дотримуйтесь інструкцій логістичного центру та правил безпеки для цього режиму.
+                    </p>
                 </div>
-            }
-            else
-            {
-                <div class="driver-grid">
-                    <!-- ===== ЛІВА КОЛОНКА: ДЕТАЛІ + СТАДІЇ ===== -->
-                    <div>
-                        <!-- Деталі замовлення -->
-                        <div class="modern-card mb-4">
-                            <div class="card-header-custom">
-                                <h5><span class="header-icon blue"><i class="bi bi-box-seam"></i></span> Замовлення №@currentOrder.Id</h5>
-                                <span class="status-badge @DriverStatusClass(currentOrder.Status)">@currentOrder.Status</span>
-                            </div>
-                            <div class="card-body-custom">
-                                <div class="order-detail-grid">
-                                    <div class="detail-block">
-                                        <div class="detail-block-title"><i class="bi bi-building"></i> Замовник</div>
-                                        <div class="detail-block-value">@currentOrder.CustomerCompany</div>
-                                        <div class="detail-block-sub">@currentOrder.CustomerName · @currentOrder.CustomerPhone</div>
-                                    </div>
-                                    <div class="detail-block">
-                                        <div class="detail-block-title"><i class="bi bi-truck"></i> Транспортний засіб</div>
-                                        <div class="detail-block-value">@currentOrder.VehicleModel</div>
-                                        <div class="detail-block-sub">Держномер: @currentOrder.VehiclePlate</div>
-                                    </div>
-                                    <div class="detail-block">
-                                        <div class="detail-block-title"><i class="bi bi-box"></i> Вантаж</div>
-                                        <div class="detail-block-value">@currentOrder.CargoName</div>
-                                        <div class="detail-block-sub">Вага: @currentOrder.WeightTons т · Об'єм: @currentOrder.VolumeM3 м³ @if (currentOrder.NeedsRefrigerator) {
-                                        <span style="color:#60a5fa">❄️ рефрижератор</span>
-                                    }
-</div>
-                                </div>
-                                <div class="detail-block">
-                                    <div class="detail-block-title"><i class="bi bi-geo-alt"></i> Маршрут</div>
-                                    <div class="detail-block-value">@currentOrder.Points.Count точок</div>
-                                    <div class="detail-block-sub">Загальна відстань: ~@currentOrder.TotalDistance км · Час: ~@currentOrder.TotalTime хв</div>
-                                </div>
-                            </div>
+            </div>
 
-                            <!-- Точки маршруту -->
-                            <div class="mt-3">
-                                <div class="detail-block-title" style="margin-bottom:.5rem"><i class="bi bi-signpost-2"></i> Пункти маршруту</div>
-                                @for (int i = 0; i < currentOrder.Points.Count; i++)
-                                {
-                                    var p = currentOrder.Points[i];
-                                    <div class="stage-row @(i <= currentOrder.CompletedPoints ? "done" : (i == currentOrder.CompletedPoints + 1 ? "active" : "pending"))">
-                                        <div class="stage-icon">
-                                            @if (i <= currentOrder.CompletedPoints)
-                                            {
-                                                <i class="bi bi-check-lg"></i>
-                                            }
-                                            else if (i == currentOrder.CompletedPoints + 1)
-                                            {
-                                                <i class="bi bi-hourglass-split"></i>
-                                            }
-                                            else
-                                            {
-                                                <span style="font-size:.75rem;font-weight:700">@(i + 1)</span>
-                                            }
-                                        </div>
-                                        <div style="flex-grow:1">
-                                            <div class="stage-label">
-                                                <span class="point-type-badge @(p.IsLoading ? "loading" : "delivery")" style="font-size:.65rem;padding:.1rem .35rem;margin-right:.4rem">
-                                                    @(p.IsLoading ? "ЗАВАНТАЖ." : "ДОСТАВКА")
-                                                </span>
-                                                @p.Address
-                                            </div>
-                                            <div class="stage-time">
-                                                <i class="bi bi-person me-1"></i>@p.ContactName · <i class="bi bi-telephone me-1"></i>@p.ContactPhone
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Стадії виконання -->
+            <div class="row g-4">
+                <!-- Ліва колонка: Замовлення -->
+                <div class="col-lg-7">
                     <div class="modern-card">
                         <div class="card-header-custom">
-                            <h5><span class="header-icon green"><i class="bi bi-check2-square"></i></span> Стадії виконання</h5>
+                            <h5>
+                                <span class="header-icon blue"><i class="bi bi-truck"></i></span>
+                                Мої призначені замовлення
+                            </h5>
+                            <span class="badge-count">@OrderService.GetAllOrders().Count активних</span>
                         </div>
                         <div class="card-body-custom">
-                            <div class="stages-timeline">
-                                @foreach (var s in stages)
-                                {
-                                    <div class="stage-row @s.StateClass">
-                                        <div class="stage-icon">
-                                            @if (s.State == "done")
-                                            {
-                                                <i class="bi bi-check-lg"></i>
-                                            }
-                                            else if (s.State == "active")
-                                            {
-                                                <i class="bi bi-hourglass-split"></i>
-                                            }
-                                            else if (s.State == "blocked")
-                                            {
-                                                <i class="bi bi-lock-fill"></i>
-                                            }
-                                            else
-                                            {
-                                                <span style="font-size:.7rem;font-weight:700">@s.Number</span>
-                                            }
-                                        </div>
-                                        <div class="stage-label">@s.Label</div>
-                                        @if (!string.IsNullOrEmpty(s.Time))
-                                        {
-                                            <div class="stage-time">@s.Time</div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-
-                            <!-- Кнопки дій -->
-                            <div class="stage-actions">
-                                @if (currentStageIndex < stages.Count && stages[currentStageIndex].State == "active" && !isBlockedByThreat)
-                                {
-                                    <button class="btn-stage primary" @onclick="ConfirmStage">
-                                        <i class="bi bi-check-circle-fill"></i> @stages[currentStageIndex].ButtonLabel
-                                    </button>
-                                }
-                                @if (isBlockedByThreat)
-                                {
-                                    <div class="threat-alert-driver danger" style="margin-top:1rem;width:100%">
-                                        <div class="threat-title"><i class="bi bi-exclamation-triangle-fill"></i> Рух заблоковано</div>
-                                        <div class="threat-body">Через @EmergencyService.CurrentEmergency виїзд/продовження руху тимчасово заблоковано згідно з протоколом безпеки. Очікуйте повідомлення від диспетчера.</div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== ПРАВА КОЛОНКА: КАРТА + ПОВІДОМЛЕННЯ ===== -->
-                <div>
-                    <!-- Карта маршруту (плейсхолдер) -->
-                    <div class="modern-card mb-4">
-                        <div class="card-header-custom">
-                            <h5><span class="header-icon blue"><i class="bi bi-map"></i></span> Мій маршрут</h5>
-                        </div>
-                        <div class="card-body-custom p-0">
-                            <!-- BACKEND: сюди вставити компонент карти Leaflet з маршрутом -->
-                            <div class="map-placeholder-sm">
-                                <div class="placeholder-content">
-                                    <i class="bi bi-map-fill"></i>
-                                    <h5>Карта маршруту</h5>
-                                    <p>Тут буде інтерактивна карта з вашим маршрутом та поточним положенням ТЗ</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Повідомлення про проблеми -->
-                    <div class="modern-card">
-                        <div class="card-header-custom">
-                            <h5><span class="header-icon" style="background:rgba(239,68,68,.15);color:#f87171"><i class="bi bi-exclamation-triangle"></i></span> Повідомити про проблему</h5>
-                        </div>
-                        <div class="card-body-custom">
-                            <div class="form-section-title"><i class="bi bi-tag"></i> Тип проблеми</div>
-                            <div class="problem-type-btns">
-                                <button class="problem-type-btn @(problemCategory == "admin" ? "selected" : "")" @onclick='() => problemCategory = "admin"'>
-                                    <i class="bi bi-shield-exclamation d-block mb-1"></i>
-                                    ДТП / дорога
-                                    <div style="font-size:.68rem;font-weight:400;opacity:.7;margin-top:.2rem">→ Адміністратору</div>
-                                </button>
-                                <button class="problem-type-btn @(problemCategory == "manager" ? "selected" : "")" @onclick='() => problemCategory = "manager"'>
-                                    <i class="bi bi-person-x d-block mb-1"></i>
-                                    Клієнт / вантаж
-                                    <div style="font-size:.68rem;font-weight:400;opacity:.7;margin-top:.2rem">→ Менеджеру</div>
-                                </button>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label-modern">Тема *</label>
-                                <input class="dark-input w-100 @ProblemErr("Subject")" @bind="problemSubject" placeholder="Коротко опишіть проблему" />
-                                @ProblemMsg("Subject")
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label-modern">Опис *</label>
-                                <textarea class="dark-input w-100 @ProblemErr("Body")" rows="4" @bind="problemBody" placeholder="Детально опишіть ситуацію, місце, обставини..."></textarea>
-                                @ProblemMsg("Body")
-                            </div>
-
-                            @if (problemSent)
-                            {
-                                <div class="form-banner-error" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#34d399">
-                                    <i class="bi bi-check-circle-fill"></i> Повідомлення успішно надіслано відповідальній стороні!
-                                </div>
+                            @{
+                                var assignedOrders = OrderService.GetAllOrders();
                             }
 
-                            <button class="btn-modern w-100" style="background:var(--danger-red);color:white;height:44px" @onclick="SendProblemReport">
+                            @if (!assignedOrders.Any())
+                            {
+                                <div class="text-center py-5" style="color: var(--text-secondary);">
+                                    <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="mt-3 mb-0">Наразі немає активних призначень</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var order in assignedOrders)
+                                {
+                                    <div class="modern-card" style="margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                                        <div class="card-body-custom">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h6 class="mb-1" style="color: var(--text-primary); font-weight: 700;">
+                                                        Замовлення №@order.Id: @order.CargoName
+                                                    </h6>
+                                                    <p class="mb-1" style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                        <i class="bi bi-building"></i> @order.CustomerCompany (@order.CustomerName)
+                                                    </p>
+                                                </div>
+                                                <span class="badge-modern badge-primary">@order.Status</span>
+                                            </div>
+
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-md-6">
+                                                    <div style="background: var(--bg-input); padding: 0.75rem; border-radius: 8px;">
+                                                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">
+                                                            <i class="bi bi-geo-alt-fill" style="color: var(--primary-blue);"></i> Звідки
+                                                        </div>
+                                                        <div style="color: var(--text-primary); font-size: 0.9rem;">@string.Join(" → ", order.LoadingPoints)</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div style="background: var(--bg-input); padding: 0.75rem; border-radius: 8px;">
+                                                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">
+                                                            <i class="bi bi-flag-fill" style="color: var(--success-green);"></i> Куди
+                                                        </div>
+                                                        <div style="color: var(--text-primary); font-size: 0.9rem;">@string.Join(" → ", order.DeliveryPoints)</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-6">
+                                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Вага</div>
+                                                    <div style="font-weight: 600; color: var(--text-primary);">@order.WeightTons т</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Об'єм</div>
+                                                    <div style="font-weight: 600; color: var(--text-primary);">@order.VolumeM3 м³</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <button class="btn-modern"
+                                                        style="background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                                                        @onclick='() => UpdateOrderStatus(order, "Прибув на завантаження")'>
+                                                    <i class="bi bi-geo-alt"></i> Прибув на завантаження
+                                                </button>
+                                                <button class="btn-modern btn-add"
+                                                        @onclick='() => UpdateOrderStatus(order, "В дорозі / Виконання")'>
+                                                    <i class="bi bi-truck"></i> В дорозі
+                                                </button>
+                                                <button class="btn-modern"
+                                                        style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);"
+                                                        @onclick='() => UpdateOrderStatus(order, "Доставлено / Завершено")'>
+                                                    <i class="bi bi-check-circle"></i> Доставлено
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Права колонка: Повідомлення про проблеми -->
+                <div class="col-lg-5">
+                    <div class="modern-card" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <div class="card-header-custom">
+                            <h5>
+                                <span class="header-icon" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </span>
+                                Повідомити про проблему
+                            </h5>
+                        </div>
+                        <div class="card-body-custom">
+                            <div class="mb-3">
+                                <label class="form-label" style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">Тип проблеми</label>
+                                <select class="form-select" style="background: var(--bg-input); border-color: var(--border-color); color: var(--text-primary);" @bind="problemType">
+                                    <option value="ДТП / Перекриття дороги (Адмін)">ДТП / Проблема на дорозі</option>
+                                    <option value="Клієнт не виходить на зв'язок (Менеджер)">Проблема зі стороною клієнта</option>
+                                    <option value="Технічна несправність авто">Технічна поломка автомобіля</option>
+                                    <option value="Погіршення самопочуття">Проблеми зі здоров'ям</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">Опис проблеми</label>
+                                <textarea class="form-control" rows="4"
+                                          style="background: var(--bg-input); border-color: var(--border-color); color: var(--text-primary);"
+                                          @bind="problemDescription"
+                                          placeholder="Опишіть ситуацію детально..."></textarea>
+                            </div>
+                            <button class="btn-modern w-100"
+                                    style="background: var(--danger-red); color: white;"
+                                    @onclick="SendProblemReport">
                                 <i class="bi bi-send"></i> Надіслати диспетчеру
                             </button>
+
+                            @if (reportSent)
+                            {
+                                <div class="alert mt-3 mb-0"
+                                     style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; border-radius: 8px;">
+                                    <i class="bi bi-check-circle-fill"></i> Повідомлення успішно надіслано!
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Додаткова картка: Контактна інформація -->
+                    <div class="modern-card mt-4">
+                        <div class="card-header-custom">
+                            <h5>
+                                <span class="header-icon green"><i class="bi bi-telephone"></i></span>
+                                Контакти диспетчера
+                            </h5>
+                        </div>
+                        <div class="card-body-custom">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-telephone-fill" style="color: var(--success-green); font-size: 1.25rem; margin-right: 0.75rem;"></i>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Гаряча лінія</div>
+                                    <div style="font-weight: 600; color: var(--text-primary);">+380 (XX) XXX-XX-XX</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-envelope-fill" style="color: var(--primary-blue); font-size: 1.25rem; margin-right: 0.75rem;"></i>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Email</div>
+                                    <div style="font-weight: 600; color: var(--text-primary);">dispatcher@transportin.com</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-                        }
         </div>
     </main>
 </div>
 
 @code {
-    private OrderVM? currentOrder;
-    private List<StageVM> stages = new();
-    private int currentStageIndex = 0;
-    private bool isBlockedByThreat = false;
-
-    // Форма повідомлення
-    private string problemCategory = "admin";
-    private string problemSubject = "";
-    private string problemBody = "";
-    private bool problemSent = false;
-    private Dictionary<string, string> problemErrors = new();
-
-    // ===== МОДЕЛІ (UI-заглушки) =====
-    private class OrderVM
-    {
-        public int Id; public string CustomerCompany = ""; public string CustomerName = ""; public string CustomerPhone = "";
-        public string VehicleModel = ""; public string VehiclePlate = "";
-        public string CargoName = ""; public double WeightTons; public double VolumeM3; public bool NeedsRefrigerator;
-        public int TotalDistance; public int TotalTime;
-        public string Status = "Призначено";
-        public List<PointVM> Points = new();
-        public int CompletedPoints;
-    }
-    private class PointVM
-    {
-        public bool IsLoading; public string Address = ""; public string ContactName = ""; public string ContactPhone = ""; public string OperationType = "";
-    }
-    private class StageVM
-    {
-        public int Number; public string Label = ""; public string ButtonLabel = ""; public string State = "pending"; public string Time = "";
-        public string StateClass => State;
-    }
+    private string problemType = "ДТП / Перекриття дороги (Адмін)";
+    private string problemDescription = "";
+    private bool reportSent = false;
 
     protected override void OnInitialized()
     {
-        // ===== 1. ПЕРЕВІРКА РОЛІ  =====
-        var userRole = AuthService.CurrentUser?.Role;
-        if (userRole != TransportIn.Models.UserRole.Driver)
-        {
-            Navigation.NavigateTo(GetRedirectPath(userRole));
-            return;
-        }
-
         EmergencyService.OnChange += OnEmergencyChanged;
         OrderService.OnChange += OnOrderChanged;
-        LoadCurrentOrder();
-        InitStages();
     }
 
-    private void OnEmergencyChanged()
-    {
-        CheckThreatBlock();
-        InvokeAsync(StateHasChanged);
-    }
+    private void OnEmergencyChanged() => InvokeAsync(StateHasChanged);
     private void OnOrderChanged() => InvokeAsync(StateHasChanged);
 
-    private void LoadCurrentOrder()
+    private string GetAlertClass(string status) => status switch
     {
-        currentOrder = new OrderVM
-        {
-            Id = 1042,
-            CustomerCompany = "ТОВ «ФудМаркет»",
-            CustomerName = "Петренко О. В.",
-            CustomerPhone = "0501234567",
-            VehicleModel = "Mercedes-Benz Sprinter",
-            VehiclePlate = "AA 1234 BP",
-            CargoName = "Продукти харчування (охолоджені)",
-            WeightTons = 2.5,
-            VolumeM3 = 12,
-            NeedsRefrigerator = true,
-            TotalDistance = 47,
-            TotalTime = 95,
-            Status = "В дорозі",
-            CompletedPoints = 0,
-            Points = new()
-            {
-                new() { IsLoading = true, Address = "вул. Промислова, 15, склад №3", ContactName = "Сидоренко І. М.", ContactPhone = "0671112233", OperationType = "Передача вантажу" },
-                new() { IsLoading = false, Address = "вул. Хрещатик, 22, супермаркет", ContactName = "Ковальчук Т. П.", ContactPhone = "0934445566", OperationType = "Отримання вантажу" },
-                new() { IsLoading = false, Address = "просп. Перемоги, 100, ТРЦ", ContactName = "Мельник В. О.", ContactPhone = "0507778899", OperationType = "Отримання вантажу" }
-            }
-        };
-    }
-
-    private void InitStages()
-    {
-        stages = new()
-        {
-            new() { Number = 1, Label = "Прибув на пункт завантаження", ButtonLabel = "Підтвердити прибуття", State = "done", Time = "09:15" },
-            new() { Number = 2, Label = "Початок завантаження", ButtonLabel = "Почати завантаження", State = "done", Time = "09:22" },
-            new() { Number = 3, Label = "Завершення завантаження", ButtonLabel = "Завершити завантаження", State = "active" },
-            new() { Number = 4, Label = "Виїзд / в дорозі", ButtonLabel = "Підтвердити виїзд", State = "pending" },
-            new() { Number = 5, Label = "Прибув на пункт доставки №1", ButtonLabel = "Прибув на розвантаження", State = "pending" },
-            new() { Number = 6, Label = "Початок розвантаження №1", ButtonLabel = "Почати розвантаження", State = "pending" },
-            new() { Number = 7, Label = "Завершення розвантаження №1", ButtonLabel = "Завершити розвантаження", State = "pending" },
-            new() { Number = 8, Label = "Прибув на пункт доставки №2", ButtonLabel = "Прибув на розвантаження", State = "pending" },
-            new() { Number = 9, Label = "Початок розвантаження №2", ButtonLabel = "Почати розвантаження", State = "pending" },
-            new() { Number = 10, Label = "Завершення розвантаження №2", ButtonLabel = "Завершити розвантаження", State = "pending" },
-            new() { Number = 11, Label = "Замовлення завершено", ButtonLabel = "Завершити замовлення", State = "pending" }
-        };
-        currentStageIndex = stages.FindIndex(s => s.State == "active");
-        if (currentStageIndex < 0) currentStageIndex = stages.Count;
-    }
-
-    private void CheckThreatBlock()
-    {
-        isBlockedByThreat = EmergencyService.CurrentEmergency switch
-        {
-            "Повітряна тривога" => true,
-            "Перекриття мостів" => true,
-            _ => false
-        };
-    }
-
-    private void ConfirmStage()
-    {
-        if (currentStageIndex >= stages.Count) return;
-        if (isBlockedByThreat) return;
-
-        stages[currentStageIndex].State = "done";
-        stages[currentStageIndex].Time = DateTime.Now.ToString("HH:mm");
-
-        var label = stages[currentStageIndex].Label.ToLower();
-        if (label.Contains("завершення завантаження") || label.Contains("завершення розвантаження"))
-        {
-            currentOrder!.CompletedPoints++;
-        }
-
-        currentStageIndex++;
-        if (currentStageIndex < stages.Count)
-        {
-            stages[currentStageIndex].State = "active";
-        }
-        else
-        {
-            currentOrder!.Status = "Завершено";
-        }
-        StateHasChanged();
-    }
-
-    private void SendProblemReport()
-    {
-        problemErrors.Clear();
-        if (string.IsNullOrWhiteSpace(problemSubject)) problemErrors["Subject"] = "Обов'язкове поле";
-        if (string.IsNullOrWhiteSpace(problemBody) || problemBody.Length < 10) problemErrors["Body"] = "Мінімум 10 символів";
-
-        if (problemErrors.Count > 0) { StateHasChanged(); return; }
-
-        problemSent = true;
-        problemSubject = ""; problemBody = "";
-        StateHasChanged();
-    }
-
-    private string ProblemErr(string k) => problemErrors.ContainsKey(k) ? "is-invalid" : "";
-    private RenderFragment ProblemMsg(string k) => builder => { if (problemErrors.TryGetValue(k, out var m)) { builder.OpenElement(0, "div"); builder.AddAttribute(1, "class", "invalid-feedback-modern"); builder.AddContent(2, "⚠ " + m); builder.CloseElement(); } };
-
-    private string GetThreatClass() => EmergencyService.CurrentEmergency switch
-    {
-        "Повітряна тривога" => "danger",
-        "Ожеледиця" or "Перекриття мостів" => "",
-        _ => "calm"
+        "Повітряна тривога" => "alert-danger",
+        "Ожеледиця" => "alert-warning",
+        "Потоп / Буря" => "alert-info",
+        _ => "alert-success"
     };
-    private string GetThreatIcon() => EmergencyService.CurrentEmergency switch
+
+    private string GetEmergencyColor() => EmergencyService.CurrentEmergency switch
+    {
+        "Повітряна тривога" => "#ef4444",
+        "Ожеледиця" => "#f59e0b",
+        "Перекриття мостів" => "#f59e0b",
+        _ => "#10b981"
+    };
+
+    private string GetEmergencyHeaderBg() => EmergencyService.CurrentEmergency switch
+    {
+        "Повітряна тривога" => "rgba(239, 68, 68, 0.1)",
+        "Ожеледиця" => "rgba(245, 158, 11, 0.1)",
+        "Перекриття мостів" => "rgba(245, 158, 11, 0.1)",
+        _ => "rgba(16, 185, 129, 0.1)"
+    };
+
+    private string GetEmergencyIcon() => EmergencyService.CurrentEmergency switch
     {
         "Повітряна тривога" => "bi-exclamation-triangle-fill",
         "Ожеледиця" => "bi-snow2",
         "Перекриття мостів" => "bi-sign-stop-fill",
-        _ => "bi-info-circle-fill"
+        _ => "bi-check-circle-fill"
     };
-    private string GetThreatAdvice() => EmergencyService.CurrentEmergency switch
+
+    private string GetEmergencyClass() => EmergencyService.CurrentEmergency switch
     {
-        "Повітряна тривога" => "Згідно з протоколом безпеки: якщо ви на пункті — залишайтеся та очікуйте. Якщо в дорозі — рухайтеся до найближчого безпечного місця очікування.",
-        "Ожеледиця" => "Зменшіть швидкість на 30-50%. Увімкніть протитуманні фари. Збільште дистанцію.",
-        "Перекриття мостів" => "Увага! Всі мостові переходи перекриті. Побудова маршруту через річку неможлива. Очікуйте відновлення руху.",
-        _ => "Дотримуйтесь інструкцій диспетчера."
+        "Повітряна тривога" => "status-danger",
+        "Ожеледиця" or "Перекриття мостів" => "status-warning",
+        _ => "status-calm"
     };
-        // OrderService.UpdateStatus(order.Id, newStatus); removed cuz merge conflict
+
+    private string GetEmergencyStatusIcon() => EmergencyService.CurrentEmergency switch
+    {
+        "Повітряна тривога" => "bi-exclamation-triangle-fill",
+        "Ожеледиця" => "bi-snow2",
+        "Перекриття мостів" => "bi-sign-stop-fill",
+        _ => "bi-check-circle-fill"
+    };
+
+    private void UpdateOrderStatus(TransportIn.Models.Order order, string newStatus)
+    {
+        OrderService.UpdateStatus(order.Id, newStatus);
     }
 
-    private string DriverStatusClass(string s) => s switch
+    private void SendProblemReport()
     {
-        "Призначено" => "new",
-        "В дорозі" => "in-progress",
-        "Призупинено" => "suspended",
-        "Завершено" => "completed",
-        _ => "new"
-    };
+        if (string.IsNullOrWhiteSpace(problemDescription)) return;
 
-    private void Logout() { AuthService.Logout(); Navigation.NavigateTo("/"); }
+        reportSent = true;
+        problemDescription = "";
+    }
 
-    private bool IsActive(string path) => Navigation.Uri.EndsWith(path, StringComparison.OrdinalIgnoreCase);
-
-    private string GetRedirectPath(TransportIn.Models.UserRole? role) => role switch
+    private void Logout()
     {
-        TransportIn.Models.UserRole.Admin => "/admin-dashboard",
-        TransportIn.Models.UserRole.Manager => "/manager-dashboard",
-        TransportIn.Models.UserRole.Driver => "/driver-dashboard",
-        _ => "/"
-    };
+        AuthService.Logout();
+        Navigation.NavigateTo("/");
+    }
 
     public void Dispose()
     {

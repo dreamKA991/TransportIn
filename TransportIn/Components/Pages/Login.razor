@@ -5,12 +5,14 @@
 
 <div class="login-page">
     <div class="login-card">
+        <!-- Заголовок -->
         <div class="login-header">
             <i class="bi bi-truck-front-fill"></i>
             <h2>TransportIn</h2>
             <p>Логістична система управління</p>
         </div>
 
+        <!-- Повідомлення про помилку -->
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="login-alert-danger">
@@ -19,6 +21,7 @@
             </div>
         }
 
+        <!-- Форма входу -->
         <div>
             <div class="mb-3">
                 <label class="form-label-modern">Логін</label>
@@ -41,6 +44,7 @@
             </button>
         </div>
 
+        <!-- Підказка для тестування -->
         <div class="login-hint">
             <i class="bi bi-info-circle me-1"></i>
             Швидкий вхід для тесту:<br>
@@ -56,12 +60,6 @@
 
     private void HandleLogin()
     {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-        {
-            errorMessage = "Будь ласка, заповніть всі поля для входу!";
-            return;
-        }
-
         var user = AuthService.Login(username, password);
         if (user == null)
         {

@@ -1,18 +1,2 @@
 ﻿@inherits LayoutComponentBase
-@inject TransportIn.Services.AuthService AuthService
-@inject NavigationManager Navigation
-
-<div class="admin-page">
-    @Body
-</div>
-
-@code {
-    protected override void OnInitialized()
-    {
-        // Якщо користувач не авторизований — на головну
-        if (AuthService.CurrentUser == null)
-        {
-            Navigation.NavigateTo("/");
-        }
-    }
-}
+@Body
