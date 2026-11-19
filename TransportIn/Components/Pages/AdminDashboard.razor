@@ -1,15 +1,17 @@
 ﻿@page "/admin-dashboard"
 @layout TransportIn.Components.Layout.AdminLayout
 @rendermode InteractiveServer
+
+@using System.Text.RegularExpressions
+
 @inject TransportIn.Services.AuthService AuthService
 @inject TransportIn.Services.EmergencyService EmergencyService
 @inject TransportIn.Services.FleetService FleetService
 @inject TransportIn.Services.ExpertRulesService ExpertRulesService
 @inject TransportIn.Services.EmployeeService EmployeeService
-@implements IDisposable
 @inject NavigationManager Navigation
 
-@using System.Text.RegularExpressions
+@implements IDisposable
 
 <div class="admin-layout">
     <aside class="admin-sidebar">

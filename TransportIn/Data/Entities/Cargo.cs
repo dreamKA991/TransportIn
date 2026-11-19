@@ -1,5 +1,7 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TransportIn.Data.Entities;
 
@@ -13,9 +15,15 @@ public partial class Cargo
 
     public double? VolumeM3 { get; set; }
 
+    [Column("TempMin")]
     public double? MinTemperatureC { get; set; }
 
+    [Column("TempMax")]
     public double? MaxTemperatureC { get; set; }
+
+    public bool NeedsRefrigerator { get; set; }
+
+    public string? SpecialConditions { get; set; }
 
     public string TransportConditions { get; set; } = null!;
 

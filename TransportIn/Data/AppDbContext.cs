@@ -11,71 +11,38 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
-
-    public virtual DbSet<ActivityLog> ActivityLogs { get; set; }
-
-    public virtual DbSet<Cargo> Cargos { get; set; }
-
-    public virtual DbSet<ContactPerson> ContactPersons { get; set; }
-
-    public virtual DbSet<Customer> Customers { get; set; }
-
-    public virtual DbSet<DriverReport> DriverReports { get; set; }
-
-    public virtual DbSet<DriverSchedule> DriverSchedules { get; set; }
-
-    public virtual DbSet<Employee> Employees { get; set; }
-
-    public virtual DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
-
-    public virtual DbSet<ExpertRule> ExpertRules { get; set; }
-
-    public virtual DbSet<Notification> Notifications { get; set; }
-
-    public virtual DbSet<Order> Orders { get; set; }
-
-    public virtual DbSet<OrderAssignment> OrderAssignments { get; set; }
-
-    public virtual DbSet<OrderCargo> OrderCargos { get; set; }
-
-    public virtual DbSet<OrderPoint> OrderPoints { get; set; }
-
-    public virtual DbSet<OrderStatus> OrderStatuses { get; set; }
-
-    public virtual DbSet<OrderStatusHistory> OrderStatusHistories { get; set; }
-
-    public virtual DbSet<RoadEvent> RoadEvents { get; set; }
-
-    public virtual DbSet<RoadRestriction> RoadRestrictions { get; set; }
-
-    public virtual DbSet<Role> Roles { get; set; }
-
-    public virtual DbSet<TransportIn.Data.Entities.Route> Routes { get; set; }
-
-    public virtual DbSet<RouteHistory> RouteHistories { get; set; }
-
-    public virtual DbSet<RoutePoint> RoutePoints { get; set; }
-
-    public virtual DbSet<RuleCondition> RuleConditions { get; set; }
-
-    public virtual DbSet<RuleExecutionHistory> RuleExecutionHistories { get; set; }
-
-    public virtual DbSet<SafeLocation> SafeLocations { get; set; }
-
-    public virtual DbSet<TransportRoute> TransportRoutes { get; set; }
-
-    public virtual DbSet<User> Users { get; set; }
-
-    public virtual DbSet<Vehicle> Vehicles { get; set; }
-
-    public virtual DbSet<VehicleDocument> VehicleDocuments { get; set; }
-
-    public virtual DbSet<VehicleEquipment> VehicleEquipments { get; set; }
-
-    public virtual DbSet<VehicleLocation> VehicleLocations { get; set; }
-
-    public virtual DbSet<VehicleStatus> VehicleStatuses { get; set; }
-
+    public virtual DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
+    public virtual DbSet<Cargo> Cargos { get; set; } = null!;
+    public virtual DbSet<ContactPerson> ContactPersons { get; set; } = null!;
+    public virtual DbSet<Customer> Customers { get; set; } = null!;
+    public virtual DbSet<DriverReport> DriverReports { get; set; } = null!;
+    public virtual DbSet<DriverSchedule> DriverSchedules { get; set; } = null!;
+    public virtual DbSet<Employee> Employees { get; set; } = null!;
+    public virtual DbSet<EmployeeDocument> EmployeeDocuments { get; set; } = null!;
+    public virtual DbSet<ExpertRule> ExpertRules { get; set; } = null!;
+    public virtual DbSet<Notification> Notifications { get; set; } = null!;
+    public virtual DbSet<Order> Orders { get; set; } = null!;
+    public virtual DbSet<OrderAssignment> OrderAssignments { get; set; } = null!;
+    public virtual DbSet<OrderCargo> OrderCargos { get; set; } = null!;
+    public virtual DbSet<OrderPoint> OrderPoints { get; set; } = null!;
+    public virtual DbSet<OrderStatus> OrderStatuses { get; set; } = null!;
+    public virtual DbSet<OrderStatusHistory> OrderStatusHistories { get; set; } = null!;
+    public virtual DbSet<RoadEvent> RoadEvents { get; set; } = null!;
+    public virtual DbSet<RoadRestriction> RoadRestrictions { get; set; } = null!;
+    public virtual DbSet<Role> Roles { get; set; } = null!;
+    public virtual DbSet<TransportIn.Data.Entities.Route> Routes { get; set; } = null!;
+    public virtual DbSet<RouteHistory> RouteHistories { get; set; } = null!;
+    public virtual DbSet<RoutePoint> RoutePoints { get; set; } = null!;
+    public virtual DbSet<RuleCondition> RuleConditions { get; set; } = null!;
+    public virtual DbSet<RuleExecutionHistory> RuleExecutionHistories { get; set; } = null!;
+    public virtual DbSet<SafeLocation> SafeLocations { get; set; } = null!;
+    public virtual DbSet<TransportRoute> TransportRoutes { get; set; } = null!;
+    public virtual DbSet<User> Users { get; set; } = null!;
+    public virtual DbSet<Vehicle> Vehicles { get; set; } = null!;
+    public virtual DbSet<VehicleDocument> VehicleDocuments { get; set; } = null!;
+    public virtual DbSet<VehicleEquipment> VehicleEquipments { get; set; } = null!;
+    public virtual DbSet<VehicleLocation> VehicleLocations { get; set; } = null!;
+    public virtual DbSet<VehicleStatus> VehicleStatuses { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
@@ -139,8 +106,13 @@ public partial class AppDbContext : DbContext
         {
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_Cargos_VolumeM3_NonNegative", "\"VolumeM3\" IS NULL OR \"VolumeM3\" >= 0");
-                table.HasCheckConstraint("CK_Cargos_TemperatureRange", "\"MinTemperatureC\" IS NULL OR \"MaxTemperatureC\" IS NULL OR \"MinTemperatureC\" <= \"MaxTemperatureC\"");
+                table.HasCheckConstraint(
+                    "CK_Cargos_VolumeM3_NonNegative",
+                    "\"VolumeM3\" IS NULL OR \"VolumeM3\" >= 0");
+
+                table.HasCheckConstraint(
+                    "CK_Cargos_TemperatureRange",
+                    "\"TempMin\" IS NULL OR \"TempMax\" IS NULL OR \"TempMin\" <= \"TempMax\"");
             });
         });
 

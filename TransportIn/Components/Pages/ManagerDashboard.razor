@@ -1,6 +1,5 @@
 ﻿@page "/manager-dashboard"
 @layout TransportIn.Components.Layout.AdminLayout
-@rendermode InteractiveServer
 @inject TransportIn.Services.AuthService AuthService
 @inject TransportIn.Services.OrderService OrderService
 @inject TransportIn.Services.FleetService FleetService
@@ -450,7 +449,54 @@
     private MessageVM? replyingTo;
     private string replyText = "";
 
+
     private List<string> allDrivers = new() { "Коваленко І. П.", "Бондар В. М.", "Шевченко О. О." };
+    private void LoadOrders()
+    {
+        var dbOrders = OrderService.GetAllOrders();
+
+        orders = dbOrders.Select(o => new OrderVM
+        {
+            Id = o.Id,
+
+            CustomerCompany = o.CustomerCompany,
+            CustomerName = o.CustomerName,
+            CustomerPhone = o.CustomerPhone,
+            CustomerEmail = o.CustomerEmail,
+
+            Status = o.Status,
+            PrevStatus = o.Status,
+
+            AssignedVehiclePlate = o.AssignedVehiclePlate,
+
+            Cargos = string.IsNullOrWhiteSpace(o.CargoName)
+                ? new List<CargoForm>()
+                : o.CargoName
+                    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Select(name => new CargoForm
+                    {
+                        Name = name,
+                        Quantity = 1
+                    })
+                    .ToList(),
+
+            Points = o.LoadingPoints
+                .Select(address => new PointForm
+                {
+                    IsLoading = true,
+                    Address = address
+                })
+                .Concat(
+                    o.DeliveryPoints.Select(address => new PointForm
+                    {
+                        IsLoading = false,
+                        Address = address
+                    })
+                )
+                .ToList()
+
+        }).ToList();
+    }
 
     private class OrderForm
     {
@@ -486,6 +532,15 @@
 
     protected override void OnInitialized()
     {
+        Console.WriteLine("MANAGER DASHBOARD ЗАПУЩЕН");
+        Console.WriteLine($"USER: {AuthService.CurrentUser?.Username ?? "NULL"}");
+        Console.WriteLine("ОТКРЫТА СТРАНИЦА МЕНЕДЖЕРА");
+        Console.WriteLine($"CURRENT USER: {AuthService.CurrentUser?.Username ?? "NULL"}");
+        Console.WriteLine("MANAGER DASHBOARD");
+        Console.WriteLine($"CURRENT USER: {AuthService.CurrentUser?.Username ?? "NULL"}");
+        Console.WriteLine("ОТКРЫТА СТРАНИЦА МЕНЕДЖЕРА");
+        Console.WriteLine($"ПОЛЬЗОВАТЕЛЬ: {AuthService.CurrentUser?.Username ?? "NULL"}");
+        Console.WriteLine($"РОЛЬ: {AuthService.CurrentUser?.Role.ToString() ?? "NULL"}");
         if (AuthService.CurrentUser?.Role != TransportIn.Models.UserRole.Manager)
         {
             Navigation.NavigateTo(GetRedirectPath(AuthService.CurrentUser?.Role));
@@ -494,6 +549,10 @@
 
         OrderService.OnChange += OnChanged;
         FleetService.OnChange += OnChanged;
+        OrderService.OnChange += OnChanged;
+        FleetService.OnChange += OnChanged;
+
+        LoadOrders();
 
         messages = new()
         {
@@ -560,39 +619,58 @@
         return mgrErrors.Count == 0;
     }
 
+    
     private void SaveOrder()
     {
-        if (!Validate()) { mgrTab = FirstMgrTab(); return; }
-
-        var cargos = newOrder.Cargos.Select(CloneCargo).ToList();
-        var points = newOrder.Points.Select(ClonePoint).ToList();
-
-        if (editingId != null)
+        if (!Validate())
         {
-            var o = orders.FirstOrDefault(x => x.Id == editingId);
-            if (o != null)
+            mgrTab = FirstMgrTab();
+            return;
+        }
+
+        var existingOrder = editingId == null
+            ? null
+            : orders.FirstOrDefault(x => x.Id == editingId);
+
+        var draft = new TransportIn.Services.OrderDraft
+        {
+            Id = editingId ?? 0,
+
+            CustomerCompany = newOrder.CustomerCompany.Trim(),
+            CustomerName = newOrder.CustomerName.Trim(),
+            CustomerPhone = newOrder.CustomerPhone.Trim(),
+            CustomerEmail = newOrder.CustomerEmail.Trim(),
+
+            Status = existingOrder?.Status ?? "Нове",
+            AssignedVehiclePlate = existingOrder?.AssignedVehiclePlate ?? "",
+
+            Cargos = newOrder.Cargos.Select(c => new TransportIn.Services.CargoDraft
             {
-                o.CustomerCompany = newOrder.CustomerCompany;
-                o.CustomerName = newOrder.CustomerName;
-                o.CustomerPhone = newOrder.CustomerPhone;
-                o.CustomerEmail = newOrder.CustomerEmail;
-                o.Cargos = cargos;
-                o.Points = points;
-            }
-        }
+                Name = c.Name.Trim(),
+                Quantity = c.Quantity,
+                WeightTons = c.WeightTons,
+                VolumeM3 = c.VolumeM3,
+                NeedsRefrigerator = c.NeedsRefrigerator,
+                TempMin = c.TempMin,
+                TempMax = c.TempMax,
+                SpecialConditions = c.SpecialConditions
+            }).ToList(),
+
+            Points = newOrder.Points.Select(p => new TransportIn.Services.PointDraft
+            {
+                IsLoading = p.IsLoading,
+                Address = p.Address.Trim(),
+                ContactName = p.ContactName.Trim(),
+                ContactPhone = p.ContactPhone.Trim()
+            }).ToList()
+        };
+
+        if (editingId == null)
+            OrderService.AddOrder(draft);
         else
-        {
-            orders.Add(new OrderVM
-                {
-                    Id = orders.Count == 0 ? 1 : orders.Max(x => x.Id) + 1,
-                    CustomerCompany = newOrder.CustomerCompany,
-                    CustomerName = newOrder.CustomerName,
-                    CustomerPhone = newOrder.CustomerPhone,
-                    CustomerEmail = newOrder.CustomerEmail,
-                    Cargos = cargos,
-                    Points = points
-                });
-        }
+            OrderService.UpdateOrder(draft);
+
+        LoadOrders();
         ResetForm();
     }
 

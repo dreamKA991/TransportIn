@@ -1,5 +1,4 @@
 ﻿@page "/"
-@rendermode InteractiveServer
 @inject TransportIn.Services.AuthService AuthService
 @inject NavigationManager Navigation
 
@@ -56,6 +55,9 @@
 
     private void HandleLogin()
     {
+        Console.WriteLine("КНОПКА ВХОДА НАЖАТА");
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             errorMessage = "Будь ласка, заповніть всі поля для входу!";
@@ -63,6 +65,9 @@
         }
 
         var user = AuthService.Login(username, password);
+        Console.WriteLine($"ВВЕДЁН ЛОГИН: {username}");
+        Console.WriteLine($"ПОЛЬЗОВАТЕЛЬ НАЙДЕН: {user != null}");
+        Console.WriteLine($"ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ: {AuthService.CurrentUser?.Username}");
         if (user == null)
         {
             errorMessage = "Невірний логін або пароль!";
@@ -76,6 +81,7 @@
                     Navigation.NavigateTo("/admin-dashboard");
                     break;
                 case TransportIn.Models.UserRole.Manager:
+                    Console.WriteLine("ПЕРЕХОД НА /manager-dashboard");
                     Navigation.NavigateTo("/manager-dashboard");
                     break;
                 case TransportIn.Models.UserRole.Driver:

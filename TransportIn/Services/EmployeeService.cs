@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using TransportIn.Data;
 
@@ -24,19 +25,21 @@ namespace TransportIn.Services
 
     public class EmployeeService
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
+
+        public EmployeeService(IDbContextFactory<AppDbContext> contextFactory)
+        {
+            _contextFactory = contextFactory;
+        }
 
         public event Action? OnChange;
 
-        public EmployeeService(AppDbContext db)
-        {
-            _db = db;
-        }
-
-        // Получение активных сотрудников из PostgreSQL
+        // Получение сотрудников
         public List<Employee> GetAllEmployees()
         {
-            return _db.Employees
+            using var db = _contextFactory.CreateDbContext();
+
+            return db.Employees
                 .AsNoTracking()
                 .OrderBy(e => e.Id)
                 .Select(e => new Employee
@@ -52,12 +55,14 @@ namespace TransportIn.Services
                 .ToList();
         }
 
-        // Добавление сотрудника в PostgreSQL
+        // Добавление сотрудника
         public void AddEmployee(Employee employee)
         {
+            using var db = _contextFactory.CreateDbContext();
+
             string roleName = employee.Role.Trim();
 
-            var role = _db.Roles
+            var role = db.Roles
                 .FirstOrDefault(r => r.Name == roleName);
 
             if (role == null)
@@ -81,19 +86,20 @@ namespace TransportIn.Services
                 RoleId = role.Id
             };
 
-            _db.Employees.Add(newEmployee);
-            _db.SaveChanges();
+            db.Employees.Add(newEmployee);
+            db.SaveChanges();
 
             employee.Id = newEmployee.Id;
 
             NotifyStateChanged();
         }
 
-        // Вместо физического удаления деактивируем сотрудника,
-        // чтобы сохранить связанные документы и историю
+        // Деактивация сотрудника
         public void DeleteEmployee(int id)
         {
-            var employee = _db.Employees
+            using var db = _contextFactory.CreateDbContext();
+
+            var employee = db.Employees
                 .FirstOrDefault(e => e.Id == id);
 
             if (employee == null)
@@ -101,7 +107,7 @@ namespace TransportIn.Services
 
             employee.IsActive = false;
 
-            _db.SaveChanges();
+            db.SaveChanges();
 
             NotifyStateChanged();
         }
@@ -109,7 +115,9 @@ namespace TransportIn.Services
         // Повторная активация сотрудника
         public void ActivateEmployee(int id)
         {
-            var employee = _db.Employees
+            using var db = _contextFactory.CreateDbContext();
+
+            var employee = db.Employees
                 .FirstOrDefault(e => e.Id == id);
 
             if (employee == null)
@@ -117,9 +125,31 @@ namespace TransportIn.Services
 
             employee.IsActive = true;
 
-            _db.SaveChanges();
+            db.SaveChanges();
 
             NotifyStateChanged();
+        }
+
+        // Асинхронное получение сотрудников
+        public async Task<List<Employee>> GetAllEmployeesAsync()
+        {
+            await using var db =
+                await _contextFactory.CreateDbContextAsync();
+
+            return await db.Employees
+                .AsNoTracking()
+                .OrderBy(e => e.Id)
+                .Select(e => new Employee
+                {
+                    Id = e.Id,
+                    FullName = e.FullName,
+                    Role = e.RoleNavigation.Name,
+                    Phone = e.Phone,
+                    LicenseCategory = e.LicenseCategory,
+                    MedicalCertExpiry = e.MedicalCertExpiry,
+                    IsActive = e.IsActive
+                })
+                .ToListAsync();
         }
 
         private void NotifyStateChanged()

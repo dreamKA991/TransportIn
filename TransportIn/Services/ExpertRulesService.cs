@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using TransportIn.Data;
 
@@ -14,27 +15,56 @@ namespace TransportIn.Services
 
     public class ExpertRulesService
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
-        public ExpertRulesService(AppDbContext db) => _db = db;
+        public ExpertRulesService(IDbContextFactory<AppDbContext> contextFactory)
+        {
+            _contextFactory = contextFactory;
+        }
 
         public event Action? OnChange;
 
-        public List<ExpertRule> GetAllRules() => _db.ExpertRules
-            .AsNoTracking()
-            .OrderBy(rule => rule.Id)
-            .Select(rule => new ExpertRule
-            {
-                Id = rule.Id,
-                ThreatType = rule.ThreatType,
-                Condition = rule.Condition,
-                ActionRecommendation = rule.ActionRecommendation,
-                Priority = rule.Priority
-            })
-            .ToList();
+        public List<ExpertRule> GetAllRules()
+        {
+            using var db = _contextFactory.CreateDbContext();
+
+            return db.ExpertRules
+                .AsNoTracking()
+                .OrderBy(rule => rule.Id)
+                .Select(rule => new ExpertRule
+                {
+                    Id = rule.Id,
+                    ThreatType = rule.ThreatType,
+                    Condition = rule.Condition,
+                    ActionRecommendation = rule.ActionRecommendation,
+                    Priority = rule.Priority
+                })
+                .ToList();
+        }
+
+        public async Task<List<ExpertRule>> GetAllRulesAsync()
+        {
+            await using var db =
+                await _contextFactory.CreateDbContextAsync();
+
+            return await db.ExpertRules
+                .AsNoTracking()
+                .OrderBy(rule => rule.Id)
+                .Select(rule => new ExpertRule
+                {
+                    Id = rule.Id,
+                    ThreatType = rule.ThreatType,
+                    Condition = rule.Condition,
+                    ActionRecommendation = rule.ActionRecommendation,
+                    Priority = rule.Priority
+                })
+                .ToListAsync();
+        }
 
         public void AddRule(ExpertRule rule)
         {
+            using var db = _contextFactory.CreateDbContext();
+
             var entity = new TransportIn.Data.Entities.ExpertRule
             {
                 ThreatType = rule.ThreatType,
@@ -43,32 +73,45 @@ namespace TransportIn.Services
                 Priority = rule.Priority
             };
 
-            _db.ExpertRules.Add(entity);
-            _db.SaveChanges();
+            db.ExpertRules.Add(entity);
+            db.SaveChanges();
+
             rule.Id = entity.Id;
             NotifyStateChanged();
         }
 
         public void DeleteRule(int id)
         {
-            var rule = _db.ExpertRules.FirstOrDefault(item => item.Id == id);
-            if (rule == null) return;
+            using var db = _contextFactory.CreateDbContext();
 
-            _db.ExpertRules.Remove(rule);
-            _db.SaveChanges();
+            var rule = db.ExpertRules
+                .FirstOrDefault(item => item.Id == id);
+
+            if (rule == null)
+                return;
+
+            db.ExpertRules.Remove(rule);
+            db.SaveChanges();
+
             NotifyStateChanged();
         }
 
         public string EvaluateThreat(string threatType, bool isInTransit)
         {
             var rule = GetAllRules().FirstOrDefault(item =>
-                item.ThreatType.Contains(threatType, StringComparison.OrdinalIgnoreCase));
+                item.ThreatType.Contains(
+                    threatType,
+                    StringComparison.OrdinalIgnoreCase
+                ));
 
             return rule == null
                 ? "Дійте за стандартним протоколом безпеки."
                 : $"[Рекомендація експертної системи]: {rule.ActionRecommendation} (Пріоритет: {rule.Priority})";
         }
 
-        private void NotifyStateChanged() => OnChange?.Invoke();
+        private void NotifyStateChanged()
+        {
+            OnChange?.Invoke();
+        }
     }
 }
